@@ -17,6 +17,8 @@ gradle = read("app/build.gradle.kts")
 gradle = gradle.replace('applicationId = "com.andrerinas.headunitrevived"', 'applicationId = "app.earpiece.headunit"')
 gradle = re.sub(r'versionCode\s*=\s*\d+', 'versionCode = 5', gradle, count=1)
 gradle = re.sub(r'versionName\s*=\s*"[^"]+"', 'versionName = "1.1.0-premium1"', gradle, count=1)
+gradle = gradle.replace('isMinifyEnabled = true', 'isMinifyEnabled = false')
+gradle = gradle.replace('isShrinkResources = true', 'isShrinkResources = false')
 write("app/build.gradle.kts", gradle)
 
 manifest = read("app/src/main/AndroidManifest.xml")
