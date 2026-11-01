@@ -296,6 +296,36 @@ frag = frag.replace(
 )
 write(fragment_path, frag)
 
+# Keep the premium app dock available even when Earpiece Auto is not the Android HOME launcher.
+# This preserves the user's Netflix/DuckDuckGo passenger shortcuts while Android Auto stays active.
+helper = read(helper_path)
+old_favorites = '''    fun applyFavoritesVisibility(rootView: View, isLauncherActive: Boolean, showFavorites: Boolean) {
+        // The whole area, not only its rows: an empty area that is still visible keeps the gap
+        // above it, and outside launcher mode the main button then ended short of the driver bar.
+        rootView.findViewById<View>(R.id.home_favorites_area)?.visibility =
+            if (isLauncherActive) View.VISIBLE else View.GONE
+        rootView.findViewById<View>(R.id.home_favorites)?.visibility = if (isLauncherActive) View.VISIBLE else View.GONE
+        rootView.findViewById<View>(R.id.home_primary_icon_tile)?.visibility =
+            if (isLauncherActive) View.GONE else View.VISIBLE
+        favoriteSlotIds.forEach {
+            rootView.findViewById<View>(it)?.visibility = if (showFavorites) View.VISIBLE else View.GONE
+        }
+    }'''
+new_favorites = '''    fun applyFavoritesVisibility(rootView: View, isLauncherActive: Boolean, showFavorites: Boolean) {
+        // Premium Earpiece Auto keeps the dock visible even when it is not the system HOME app.
+        rootView.findViewById<View>(R.id.home_favorites_area)?.visibility = View.VISIBLE
+        rootView.findViewById<View>(R.id.home_favorites)?.visibility = View.VISIBLE
+        rootView.findViewById<View>(R.id.home_primary_icon_tile)?.visibility = View.GONE
+        favoriteSlotIds.forEach {
+            rootView.findViewById<View>(it)?.visibility = if (showFavorites) View.VISIBLE else View.GONE
+        }
+    }'''
+if old_favorites in helper:
+    helper = helper.replace(old_favorites, new_favorites)
+else:
+    raise SystemExit("Could not locate applyFavoritesVisibility for premium dock patch")
+write(helper_path, helper)
+
 # --- First-run defaults: earpiece microphone + WiFi-first --------------------------------------
 # Set only when preferences are still absent; updates preserve user choices.
 settings_path = "app/src/main/java/com/andrerinas/openheadunit/utils/Settings.kt"
