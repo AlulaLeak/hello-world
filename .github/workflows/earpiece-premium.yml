@@ -1,0 +1,62 @@
+name: Build Earpiece Auto Premium
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - earpiece-auto-premium-build
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout build harness
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Clone pinned Open Headunit source
+        run: |
+          git clone https://github.com/andreknieriem/open-headunit.git source
+          cd source
+          git checkout 281bcd2ab192e238975b90ceb422d0ca630c93a8
+
+      - name: Apply Earpiece Auto premium patch
+        run: python3 premium_patch.py source
+
+      - name: Install Android native build tools
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.14206865" "cmake;3.22.1"
+
+      - name: Build GitHub release APK
+        working-directory: source
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx5g -Dorg.gradle.workers.max=2"
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:assembleGithubRelease
+
+      - name: Collect unsigned APK
+        run: |
+          mkdir -p artifact
+          find source/app/build/outputs/apk -type f -name "*.apk" -print -exec cp {} artifact/earpiece-auto-premium-unsigned.apk \;
+          test -f artifact/earpiece-auto-premium-unsigned.apk
+          sha256sum artifact/earpiece-auto-premium-unsigned.apk | tee artifact/SHA256.txt
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: earpiece-auto-premium-unsigned
+          path: artifact/
+          if-no-files-found: error
+          retention-days: 7
